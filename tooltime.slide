@@ -1,0 +1,145 @@
+Go Tools
+The IDE is coming from inside the language!
+
+* Go is a simple language.
+
+The syntax, semantics, and features are deliberately minimalistic.
+
+Unfortunately, it has a discoverability problem.
+
+There's a ton of good stuff in the standard library, including tools that'll make
+your life a lot easier, but you'd never know it unless you went looking.
+
+Today we're going to go over a few gems that you might not have known about.
+
+* golang.org/x/tools
+
+Nearly all of the tools here can be grabbed via go get from golang.org/x/tools.
+
+Most of them are installed and used as a compiled binary.  Some of them are invoked
+with just 'go <tool>', others will require you to use 'go tool <tool>'.  
+
+If they're a binary, you'll actually find them under '/x/tools/cmd', usually.
+
+* goimports
+
+You're already familiar with go fmt.
+
+(If you aren't, and you write Go code on a daily basis, you're a monster.)
+
+goimports does the exact same thing as far as formatting your source code,
+with the added bonus of managing your imports.  
+
+It removes unused imports, adds missing imports (to a degree), and even
+alphabetizes them and separates third party imports from the ones that are a
+part of your source code.
+
+* goimports example
+
+.code goimports_pre.go
+
+Awful!  Since we have an on save hook with goimports, all is not lost:
+
+.code goimports_post.go
+
+Code is formatted, the import we forgot was added, and an import 
+we weren't using is now gone.
+
+* gorename
+
+As the name might imply, gorename renames identifiers or functions.
+
+It is very smart:
+
+- It won't rename something if doing so would cause a naming conflict with something else.
+- It won't rename something if doing so would cause it to fail to compile.
+- It won't rename a method if doing so would cause that struct to no longer implement a method it has to implement.
+- However, renaming a method inside an interface will not only rename that method but also update the implementers of that interface for you.
+
+* gorename example
+
+We messed up, and "document" is too ambiguous, so let's update it to "resume."
+
+.code gorename_example_pre.go
+
+  $ gorename -from gorename_example.go:documentInfo -to resumeInfo
+  Renamed 6 occurrences in 1 file in 1 package.
+
+* gorename, continued
+
+Everything's all good now.  Notice that this isn't just a simple find/replace on text.
+
+All of the instances of the *variable* were renamed, but it wasn't renamed in the function's name.  See?  Smart.
+
+.code gorename_post.go
+
+* go vet
+
+vet analyses your source code according to a variety of rules and finds things that
+the compiler doesn't catch.
+
+.code bad_sprintf.go
+
+This is valid and builds just fine, despite the bug (do you see it?).  
+
+However, vet will catch it:
+
+  $ go vet
+  $ bad_sprintf.go:9: arg message for printf verb %d of wrong type: string
+  exit status 1
+
+* go vet
+
+The theme of vet is "things that are technically correct, but probably a mistake."  
+
+.code bad_err.go /^func saveResult/,/^}/
+
+  $ go tool vet -shadow=true -shadowstrict=true .
+  $ bad_err.go:9: declaraction of err shadows declaraction at badd_err.go:5
+  exit status 1
+
+(shadow detection is still experimental, hence the flags.)
+
+* go vet
+
+.code bad_comparison.go
+
+  $ go vet
+  $ bad_comparison.go:6: comparison of function getConfigurationKey != nil is always true
+  exit status 1
+
+* go vet
+
+Concurrency bugs are often nondeterministic and extremely difficult to debug.
+
+vet can help catch some of the most common ones, like copying a lock or directly manipulating an atomic value.
+
+.code bad_concurrency.go
+
+  $ go vet
+  $ bad_concurrency.go:5: VeryImportantConcurrentOperation passes Lock by value: sync.Mutex
+  exit status 1
+
+You really don't want to have to debug something like this.
+
+* go vet
+
+There's a bunch of other good stuff in vet.
+
+You wouldn't commit code without running the tests and building it, would you?
+
+It's absolutely worth your time to add vet to your pre-commit routines.
+
+Read the full docs at http://godoc.org/golang.org/x/tools/cmd/vet
+
+Install with:
+
+  $ go get golang.org/x/tools/cmd/vet
+
+* net/http/pprof
+
+pprof is both a library and a command-line tool.
+
+You can include pprof in your application to expose useful metrics to the pprof tool.
+
+Things like resource utilization or what your individual goroutines are up to.
